@@ -73,16 +73,10 @@ export default function ServicesPage() {
     })
   }, [page, isLoading])
 
-  const openModal = (
-    id: number,
-    title: string,
-    modalDescription: string,
-    image: string,
-    cardDescription: string
-  ) => {
-    setModalContent({ id, title, modalDescription, image, cardDescription })
-    setIsModalOpen(true)
-  }
+    const openModal = (service: Service) => {
+      setModalContent(service)
+      setIsModalOpen(true)
+    }
 
   const closeModal = () => setIsModalOpen(false)
 

@@ -16,14 +16,12 @@ function getServiceIcon(serviceId: number): LucideIcon {
 export function ServicesCard({ service, openModal }: any) {
   const Icon = getServiceIcon(service.id)
 
+  // ✅ Portada = primera imagen
+  const coverImage = service.images?.[0] ?? ""
+
   const handleOpen = () => {
-    openModal(
-      service.id,
-      service.title,
-      service.modalDescription ?? "",
-      service.image ?? "",
-      service.cardDescription ?? ""
-    )
+    // ✅ Pasamos el objeto completo (más limpio y preparado para múltiples imágenes)
+    openModal(service)
   }
 
   return (
@@ -99,7 +97,7 @@ export function ServicesCard({ service, openModal }: any) {
           {service.title}
         </h3>
 
-        {/* ✅ Descripción SIN clamp (ya no se corta) */}
+        {/* Descripción */}
         <p className="mt-4 text-base leading-relaxed text-gray-600 whitespace-pre-wrap">
           {service.cardDescription}
         </p>
@@ -124,11 +122,11 @@ export function ServicesCard({ service, openModal }: any) {
           Más información →
         </button>
 
-        {/* ✅ Empuja el bloque inferior al fondo SIEMPRE */}
+        {/* Imagen inferior */}
         <div className="mt-10 overflow-hidden rounded-2xl bg-gray-100">
-          {service.image ? (
+          {coverImage ? (
             <img
-              src={service.image}
+              src={coverImage}
               alt={service.title}
               className="h-44 w-full object-cover"
               loading="lazy"

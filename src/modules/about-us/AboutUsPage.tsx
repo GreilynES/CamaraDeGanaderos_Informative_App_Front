@@ -1,6 +1,5 @@
 import { Users, Target, Eye } from "lucide-react"
 import { AboutUsCard } from "./components/AboutUsCard"
-import AboutUsBackground from "./components/AboutUsBackground"
 import { useAboutUs } from "./hooks/useAboutUs"
 
 import { PageState } from "@/shared/ui/PageState"
@@ -48,7 +47,6 @@ export default function AboutUsPage() {
 
   return (
     <section className="relative">
-      <AboutUsBackground />
 
       <div className="relative mx-auto w-full max-w-6xl px-4 py-16 md:py-24 space-y-10">
         {/* Header SIEMPRE */}

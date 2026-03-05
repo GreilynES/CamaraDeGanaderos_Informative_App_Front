@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 type Props = {
   event: any
   onModalChange?: (open: boolean) => void
-}
+  }
 
 export function EventCard({ event, onModalChange }: Props) {
   const [showModal, setShowModal] = useState(false)

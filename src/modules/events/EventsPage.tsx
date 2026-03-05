@@ -82,7 +82,7 @@ const cardVariants = {
 
 
 const ANIM_MS = 950
-const AUTO_MS = 15000
+const AUTO_MS = 10000
 const SWIPE_THRESHOLD = 50
 
 export default function EventsPage() {
@@ -114,6 +114,12 @@ export default function EventsPage() {
   const touchEndX = useRef<number>(0)
   const carouselRef = useRef<HTMLDivElement>(null)
 
+
+const total = rtEvents.length
+const hasEvents = total > 0
+
+const [showSwipeHint] = useState(true)
+
   useEffect(() => {
     if (!seeded.current && events.length > 0) {
       setRtEvents(events)
@@ -126,9 +132,6 @@ export default function EventsPage() {
       if (events.length === 0) setPage(0)
     }
   }, [events])
-
-  const total = rtEvents.length
-  const hasEvents = total > 0
 
   const index = useMemo(() => (hasEvents ? mod(page, total) : 0), [page, total, hasEvents])
   const prevIndex = useMemo(() => (hasEvents ? mod(index - 1, total) : 0), [index, total, hasEvents])
@@ -259,6 +262,11 @@ export default function EventsPage() {
                   Próximos eventos
                 </span>
               </h2>
+              {hasEvents && total > 1 && (
+                <p className="md:hidden mt-2 mb-0 text-center text-[12px] font-medium tracking-wide text-[#1F3D2B]/55">
+                  Desliza para ver más eventos
+                </p>
+              )}
             </div>
           </ScrollReveal>
 
@@ -333,7 +341,7 @@ export default function EventsPage() {
                           exit="exit"
                           custom={direction}
                           style={{ transformOrigin: "center center" }}
-                        >
+                                                  >
                           <EventCard
                             event={rtEvents[index]}
                             onModalChange={(open: boolean) => setIsModalOpen(open)}

@@ -45,9 +45,13 @@ export const personaSchema = z.object({
   telefono: z
     .string()
     .trim()
-    .min(8, "El teléfono debe tener al menos 8 caracteres")
-    .max(20, "Máximo 20 caracteres"),
-  email: z.string().trim().toLowerCase().email("Email inválido"),
+    .min(8, "El teléfono debe tener al menos 8 dígitos")
+    .max(8, "El teléfono debe tener exactamente 8 dígitos")
+    .regex(/^\d+$/, "El teléfono solo debe contener números"),
+  email: z
+  .string()
+  .trim()
+  .email("Email inválido"),
   fechaNacimiento: z
     .string()
     .min(1, "La fecha de nacimiento es requerida")
@@ -114,22 +118,30 @@ export const motivacionHabilidadesSchema = z.object({
 
 /* ORGANIZACIÓN */
 export const organizacionSchema = z.object({
-  cedulaJuridica: z.string().trim().min(1, "La cédula jurídica es requerida"),
+  cedulaJuridica: z
+  .string()
+  .trim()
+  .regex(/^\d+$/, "La cédula jurídica solo debe contener números")
+  .min(10, "La cédula jurídica debe tener 10 dígitos")
+  .max(10, "La cédula jurídica debe tener 10 dígitos"),
+
   nombre: z.string().trim().min(1, "El nombre de la organización es requerido"),
-  // (dejo tu definición tal cual, sin cambios no requeridos)
+
   numeroVoluntarios: z
     .int("Debe ser un número entero")
     .min(1, "Debe ser al menos 1"),
+
   direccion: z.string().trim().min(1, "La dirección es requerida"),
+
   telefono: z
-    .string()
-    .trim()
-    .min(8, "El teléfono debe tener al menos 8 caracteres")
-    .max(20, "Máximo 20 caracteres"),
+  .string()
+  .trim()
+  .regex(/^\d+$/, "El teléfono solo debe contener números")
+  .min(8, "El teléfono debe tener al menos 8 dígitos")
+  .max(8, "El teléfono debe tener exactamente 8 dígitos"),
+
   email: z.string().trim().toLowerCase().email("Email institucional inválido"),
-  tipoOrganizacion: z
-    .string()
-    .trim(),
+  tipoOrganizacion: z.string().trim(),
   representante: representanteSchema,
   razonesSociales: z
     .array(

@@ -1,4 +1,3 @@
-// Step1Organization.tsx
 import { useMemo } from "react"
 import { NavigationButtons } from "../../components/NavigationButtons"
 import { OrganizacionSection } from "../../components/OrganizacionSection"
@@ -8,7 +7,7 @@ import { lookupPersonaByCedula } from "../../services/volunteerFormService"
 
 export function Step1Organization(props: {
   form: any
-  lookup?: (id: string) => Promise<any> // TSE (lo que ya tenías)
+  lookup?: (id: string) => Promise<any>
   showErrors: boolean
   setShowErrors: (v: boolean) => void
   onNext: () => void
@@ -22,19 +21,16 @@ export function Step1Organization(props: {
 
       const db = await lookupPersonaByCedula(ced)
 
-      // Caso 1: PersonaFormLookupDto
       if (db?.found) {
         return {
           source: "DB",
           ...(db.legacy ?? {}),
           persona: db.persona,
           representanteOrganizacion: db.representanteOrganizacion,
-          // si existiera también, no estorba:
           volunteerIndividual: db.volunteerIndividual,
         }
       }
 
-      // Caso 2: entity vieja
       if (db?.cedula && db?.nombre && db?.apellido1) {
         return {
           source: "DB",
@@ -54,7 +50,6 @@ export function Step1Organization(props: {
         }
       }
 
-      // Caso 3: TSE
       if (!lookup) return null
       const tse = await lookup(ced)
       return tse ? { source: "TSE", ...tse } : null
@@ -62,13 +57,13 @@ export function Step1Organization(props: {
   }, [lookup])
 
   const handleNext = () => {
-    const { anyEmpty } = validateOrgStep1Required(form)
-    if (anyEmpty) {
-      setShowErrors(true)
-      return
-    }
-    onNext()
+  const { anyEmpty } = validateOrgStep1Required(form)
+  if (anyEmpty) {
+    setShowErrors(true)
+    return
   }
+  onNext()
+}
 
   return (
     <div className="space-y-6">

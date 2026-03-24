@@ -52,8 +52,12 @@ export function RepresentanteSection({
     onSubmit: validateCargo,
   }
 
-  const shouldShowFieldError = (field: any) =>
-    showErrors && Array.isArray(field.state.meta.errors) && field.state.meta.errors.length > 0
+  const shouldShowFieldError = (field: any) => {
+  const hasError = Array.isArray(field.state.meta.errors) && field.state.meta.errors.length > 0;
+  const isTouched = field.state.meta.isTouched;
+
+  return hasError && (showErrors || isTouched);
+};
 
   const fieldErrorMsg = (field: any) => {
     const e = field?.state?.meta?.errors?.[0]
@@ -385,11 +389,11 @@ export function RepresentanteSection({
                 <Input
                   type="tel"
                   value={field.state.value || ""}
-                  maxLength={20}
+                  maxLength={8}
                   disabled={bloquearCamposDB}
                   onChange={(e) => {
-                    if (bloquearCamposDB) return
-                    field.handleChange(e.target.value)
+                    const onlyNumbers = e.target.value.replace(/\D/g, "");
+                    field.handleChange(onlyNumbers);
                   }}
                   onBlur={field.handleBlur}
                   className={`${shouldShowFieldError(field) ? inputError : inputBase} ${

@@ -1,53 +1,69 @@
-import { useRef, useState } from "react"
-import { organizacionSchema } from "../schemas/volunteerSchema"
-import { existsEmail, validateSolicitudVoluntariado } from "../services/volunteerFormService"
+import { useMemo, useState } from "react"
+import { volunteerOrganizacionSchema } from "../schemas/volunteerSchema"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
-import { CustomSelect } from "@/shared/ui/CustomSelect"
 
-interface OrganizacionSectionProps {
+import { CustomSelect } from "@/shared/ui/CustomSelect"
+import { existsEmail } from "../services/volunteerFormService"
+
+export function OrganizacionSection({
+  form,
+  showErrors = false,
+}: {
   form: any
   showErrors?: boolean
-}
+}) {
+  const orgSchema = useMemo(() => volunteerOrganizacionSchema.shape.organizacion, [])
 
-const TIPOS_ORGANIZACION = [
-  "ONG",
-  "Institución educativa",
-  "Empresa privada",
-  "Grupo comunitario",
-  "Otro",
-]
-
-function validateOrgField(key: keyof typeof organizacionSchema.shape) {
-  const shape = (organizacionSchema.shape as any)[key]
-  if (!shape) return () => undefined
-
-  return (arg: any) => {
-    const value = arg && typeof arg === "object" && "value" in arg ? arg.value : arg
-    const single = shape.safeParse(value)
-    return single.success ? undefined : single.error.issues?.[0]?.message || "Campo inválido"
-  }
-}
-
-export function OrganizacionSection({ form, showErrors }: OrganizacionSectionProps) {
-  const [tipoOrg, setTipoOrg] = useState(
-    (form.getFieldValue?.("organizacion.tipoOrganizacion") as string) || ""
-  )
+  const [tipoOrg, setTipoOrg] = useState("")
   const [otroTipo, setOtroTipo] = useState("")
-
+  const [emailDupError, setEmailDupError] = useState("")
   const [verificandoEmail, setVerificandoEmail] = useState(false)
-  const [emailDupError, setEmailDupError] = useState<string>("")
+  const TIPOS_ORGANIZACION = [
+    "Asociación",
+    "Fundación",
+    "Cooperativa",
+    "Empresa",
+    "Institución pública",
+    "ONG",
+    "Centro educativo",
+    "Otro",
+  ]
+  const validateOrgField =
+    (key: keyof typeof orgSchema.shape) => (arg: any) => {
+      const schema = (orgSchema.shape as any)[key]
+      if (!schema) return undefined
 
-  const [verificandoCJ, setVerificandoCJ] = useState(false)
-  const [cjError, setCjError] = useState<string>("")
+      const value = arg && typeof arg === "object" && "value" in arg ? arg.value : arg
+      const result = schema.safeParse(value)
+      return result.success
+        ? undefined
+        : result.error.issues?.[0]?.message || "Campo inválido"
+    }
+
+  const shouldShowFieldError = (field: any) => {
+    const hasError =
+      Array.isArray(field.state.meta.errors) && field.state.meta.errors.length > 0
+    const isTouched = !!field.state.meta.isTouched
+    return hasError && (showErrors || isTouched)
+  }
+
+  const fieldErrorMsg = (field: any) => {
+    const e = field?.state?.meta?.errors?.[0]
+    return e ? String(e) : ""
+  }
 
   const inputBase =
     "border-[#DCD6C9] focus-visible:ring-[#708C3E]/30 focus-visible:ring-2 focus-visible:ring-offset-0"
+
   const inputError =
     "border-[#9c1414] focus-visible:ring-[#9c1414]/30 focus-visible:ring-2 focus-visible:ring-offset-0"
 
-const cjDebounceRef = useRef<number | null>(null)
-const lastCheckedCjRef = useRef<string>("")
+  const commonValidators = (key: keyof typeof orgSchema.shape) => ({
+    onBlur: validateOrgField(key),
+    onChange: validateOrgField(key),
+    onSubmit: validateOrgField(key),
+  })
 
   return (
     <div className="bg-white rounded-xl shadow-md border border-[#DCD6C9]">
@@ -55,63 +71,24 @@ const lastCheckedCjRef = useRef<string>("")
         <div className="w-8 h-8 bg-[#708C3E] rounded-full flex items-center justify-center text-white font-bold text-sm">
           1
         </div>
-        <h3 className="text-lg font-semibold text-[#708C3E]">Información de la Organización</h3> 
-        <p className="mt-1 text-xs text-gray-500">(Todos los campos son obligatorios a menos que contengan la etiqueta "Opcional") </p>
+        <h3 className="text-lg font-semibold text-[#708C3E]">
+          Información de la Organización
+        </h3>
       </div>
 
       <div className="p-6 space-y-4">
         {/* Cédula jurídica */}
-        <div className="relative">
-          <label className="block text-sm font-medium text-gray-700 mb-1">Cédula jurídica</label>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Cédula jurídica
+          </label>
 
           <form.Field
             name="organizacion.cedulaJuridica"
-            validators={{
-              onBlur: validateOrgField("cedulaJuridica"),
-              onChange: validateOrgField("cedulaJuridica"),
-              onSubmit: validateOrgField("cedulaJuridica"),
-            }}
+            validators={commonValidators("cedulaJuridica")}
           >
             {(field: any) => {
-              const zodErr = showErrors && field.state.meta.errors?.length > 0
-              const hasErr = !!cjError || !!zodErr
-
-              const precheckCJ = async (cjRaw: string) => {
-                const cj = (cjRaw ?? "").trim()
-                const localMsg = validateOrgField("cedulaJuridica")(cj)
-                if (localMsg) return
-
-                if (lastCheckedCjRef.current === cj) return
-
-                setVerificandoCJ(true)
-                try {
-                  await validateSolicitudVoluntariado({
-                    tipoSolicitante: "ORGANIZACION",
-                    cedulaJuridica: cj,
-                  })
-
-                  lastCheckedCjRef.current = cj
-                  setCjError("")
-                } catch (err: any) {
-                  const status = err?.response?.status
-                  const msg =
-                    err?.response?.data?.message ||
-                    err?.response?.data?.error ||
-                    "No se pudo validar la cédula jurídica. Intenta de nuevo."
-
-                  lastCheckedCjRef.current = cj
-
-                  if (status === 409) {
-                    setCjError(msg)
-                    return
-                  }
-
-                  // otros errores
-                  setCjError("No se pudo validar la cédula jurídica. Intenta de nuevo.")
-                } finally {
-                  setVerificandoCJ(false)
-                }
-              }
+              const hasError = shouldShowFieldError(field)
 
               return (
                 <>
@@ -119,55 +96,24 @@ const lastCheckedCjRef = useRef<string>("")
                     type="text"
                     value={field.state.value ?? ""}
                     onChange={(e) => {
-                      const value = e.target.value
-
-                      field.handleChange(value)
-                      if (cjError) setCjError("") // limpia error al escribir
-
-                      const trimmed = value.trim()
-
-                      if (trimmed.length >= 3) {
-                        if (cjDebounceRef.current) window.clearTimeout(cjDebounceRef.current)
-                        cjDebounceRef.current = window.setTimeout(() => {
-                          precheckCJ(trimmed)
-                        }, 350)
-                      } else {
-                        lastCheckedCjRef.current = ""
-                      }
+                      const onlyNumbers = e.target.value.replace(/\D/g, "")
+                      field.handleChange(onlyNumbers)
                     }}
-                    onBlur={async (e) => {
-                      field.handleBlur()
-
-                      const v = e.target.value.trim()
-                      if (v.length >= 9) {
-                        if (cjDebounceRef.current) window.clearTimeout(cjDebounceRef.current)
-                        await precheckCJ(v)
-                      }
-                    }}
-                    aria-invalid={hasErr}
-                    className={`${hasErr ? inputError : inputBase} pr-10 bg-white`}
-                    maxLength={20}
+                    onBlur={field.handleBlur}
+                    maxLength={10}
+                    aria-invalid={hasError}
+                    className={`${hasError ? inputError : inputBase} bg-white`}
                   />
 
-                  {verificandoCJ && (
-                    <div className="absolute right-3 top-[34px]">
-                      <svg className="animate-spin h-5 w-5 text-gray-400" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                        <path
-                          className="opacity-75"
-                          fill="currentColor"
-                          d="M4 12a8 8 0 018-8V0C5.37 0 0 5.37 0 12h4z"
-                        />
-                      </svg>
-                    </div>
+                  {hasError && (
+                    <p className="text-sm text-[#9c1414] mt-1">
+                      {fieldErrorMsg(field)}
+                    </p>
                   )}
 
-                  {/* primero error de zod */}
-                  {zodErr && <p className="text-sm text-[#9c1414] mt-1">{field.state.meta.errors[0]}</p>}
-
-                  {/* luego error del backend */}
-                  {cjError && <p className="text-sm text-[#9c1414] mt-1">{cjError}</p>}
-                  <p className="mt-1 text-xs text-gray-500">Ejemplo: 502120987-980</p>
+                  <p className="mt-1 text-xs text-gray-500">
+                    Ejemplo: 3101123456
+                  </p>
                 </>
               )
             }}
@@ -182,11 +128,7 @@ const lastCheckedCjRef = useRef<string>("")
 
           <form.Field
             name="organizacion.nombre"
-            validators={{
-              onBlur: validateOrgField("nombre"),
-              onChange: validateOrgField("nombre"),
-              onSubmit: validateOrgField("nombre"),
-            }}
+            validators={commonValidators("nombre")}
           >
             {(field: any) => (
               <>
@@ -195,14 +137,14 @@ const lastCheckedCjRef = useRef<string>("")
                   value={field.state.value ?? ""}
                   onChange={(e) => field.handleChange(e.target.value)}
                   onBlur={field.handleBlur}
-                  aria-invalid={!!(showErrors && field.state.meta.errors?.length > 0)}
-                  className={`${showErrors && field.state.meta.errors?.length > 0 ? inputError : inputBase} bg-white`}
-                  maxLength={100}
+                  maxLength={150}
+                  aria-invalid={shouldShowFieldError(field)}
+                  className={`${shouldShowFieldError(field) ? inputError : inputBase} bg-white`}
                 />
-                {showErrors && field.state.meta.errors?.length > 0 && (
-                  <p className="text-sm text-[#9c1414] mt-1">{field.state.meta.errors[0]}</p>
+
+                {shouldShowFieldError(field) && (
+                  <p className="text-sm text-[#9c1414] mt-1">{fieldErrorMsg(field)}</p>
                 )}
-                <p className="mt-1 text-xs text-gray-500">Ejemplo: Fundación Amigos del Ambiente</p>
               </>
             )}
           </form.Field>
@@ -211,16 +153,12 @@ const lastCheckedCjRef = useRef<string>("")
         {/* Número de voluntarios */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
-            Número estimado de voluntarios
+            Número de voluntarios
           </label>
 
           <form.Field
             name="organizacion.numeroVoluntarios"
-            validators={{
-              onBlur: validateOrgField("numeroVoluntarios"),
-              onChange: validateOrgField("numeroVoluntarios"),
-              onSubmit: validateOrgField("numeroVoluntarios"),
-            }}
+            validators={commonValidators("numeroVoluntarios")}
           >
             {(field: any) => (
               <>
@@ -238,13 +176,17 @@ const lastCheckedCjRef = useRef<string>("")
                   }
                   onBlur={field.handleBlur}
                   placeholder="Mínimo 1"
-                  aria-invalid={!!(showErrors && field.state.meta.errors?.length > 0)}
-                  className={`${showErrors && field.state.meta.errors?.length > 0 ? inputError : inputBase} bg-white`}
+                  aria-invalid={shouldShowFieldError(field)}
+                  className={`${shouldShowFieldError(field) ? inputError : inputBase} bg-white`}
                 />
-                {showErrors && field.state.meta.errors?.length > 0 && (
-                  <p className="text-sm text-[#9c1414] mt-1">{field.state.meta.errors[0]}</p>
+
+                {shouldShowFieldError(field) && (
+                  <p className="text-sm text-[#9c1414] mt-1">{fieldErrorMsg(field)}</p>
                 )}
-                <p className="mt-1 text-xs text-gray-500">Mínimo 1 voluntario, máximo 15 voluntarios</p>
+
+                <p className="mt-1 text-xs text-gray-500">
+                  Mínimo 1 voluntario, máximo 15 voluntarios
+                </p>
               </>
             )}
           </form.Field>
@@ -252,18 +194,16 @@ const lastCheckedCjRef = useRef<string>("")
 
         {/* Tipo de organización */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Tipo de organización</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Tipo de organización
+          </label>
 
           <form.Field
             name="organizacion.tipoOrganizacion"
-            validators={{
-              onBlur: validateOrgField("tipoOrganizacion"),
-              onChange: validateOrgField("tipoOrganizacion"),
-              onSubmit: validateOrgField("tipoOrganizacion"),
-            }}
+            validators={commonValidators("tipoOrganizacion")}
           >
             {(field: any) => {
-              const hasError = !!(showErrors && field.state.meta.errors?.length > 0)
+              const hasError = shouldShowFieldError(field)
 
               const options = [
                 { value: "", label: "Seleccione..." },
@@ -290,10 +230,10 @@ const lastCheckedCjRef = useRef<string>("")
                     }}
                   />
 
-                  {/* truco para blur */}
                   <div tabIndex={0} onFocus={() => field.handleBlur()} className="sr-only" />
+
                   {hasError && (
-                    <p className="text-sm text-[#9c1414] mt-1">{field.state.meta.errors[0]}</p>
+                    <p className="text-sm text-[#9c1414] mt-1">{fieldErrorMsg(field)}</p>
                   )}
 
                   {tipoOrg === "Otro" && (
@@ -310,10 +250,14 @@ const lastCheckedCjRef = useRef<string>("")
                           setOtroTipo(v)
                           field.handleChange(v)
                         }}
+                        onBlur={field.handleBlur}
                         maxLength={100}
-                        className={`${inputBase} bg-white`}
+                        className={`${hasError ? inputError : inputBase} bg-white`}
                       />
-                      <p className="mt-1 text-xs text-gray-500">Ejemplo: Cooperativa agrícola</p>
+
+                      <p className="mt-1 text-xs text-gray-500">
+                        Ejemplo: Cooperativa agrícola
+                      </p>
                     </div>
                   )}
                 </>
@@ -330,11 +274,7 @@ const lastCheckedCjRef = useRef<string>("")
 
           <form.Field
             name="organizacion.direccion"
-            validators={{
-              onBlur: validateOrgField("direccion"),
-              onChange: validateOrgField("direccion"),
-              onSubmit: validateOrgField("direccion"),
-            }}
+            validators={commonValidators("direccion")}
           >
             {(field: any) => (
               <>
@@ -344,14 +284,17 @@ const lastCheckedCjRef = useRef<string>("")
                   onBlur={field.handleBlur}
                   rows={3}
                   maxLength={255}
-                  aria-invalid={!!(showErrors && field.state.meta.errors?.length > 0)}
-                  className={`${showErrors && field.state.meta.errors?.length > 0 ? inputError : inputBase} bg-white resize-none`}
+                  aria-invalid={shouldShowFieldError(field)}
+                  className={`${shouldShowFieldError(field) ? inputError : inputBase} bg-white resize-none`}
                 />
 
-                {showErrors && field.state.meta.errors?.length > 0 && (
-                  <p className="text-sm text-[#9c1414] mt-1">{field.state.meta.errors[0]}</p>
+                {shouldShowFieldError(field) && (
+                  <p className="text-sm text-[#9c1414] mt-1">{fieldErrorMsg(field)}</p>
                 )}
-                <p className="mt-1 text-xs text-gray-500">Ejemplo: Provincia, Cantón, Distrito. Señas extra.</p>
+
+                <p className="mt-1 text-xs text-gray-500">
+                  Ejemplo: Provincia, Cantón, Distrito. Señas extra.
+                </p>
               </>
             )}
           </form.Field>
@@ -365,28 +308,28 @@ const lastCheckedCjRef = useRef<string>("")
 
           <form.Field
             name="organizacion.telefono"
-            validators={{
-              onBlur: validateOrgField("telefono"),
-              onChange: validateOrgField("telefono"),
-              onSubmit: validateOrgField("telefono"),
-            }}
+            validators={commonValidators("telefono")}
           >
             {(field: any) => (
               <>
                 <Input
                   type="tel"
                   value={field.state.value ?? ""}
-                  onChange={(e) => field.handleChange(e.target.value)}
+                  onChange={(e) => {
+                    const onlyNumbers = e.target.value.replace(/\D/g, "")
+                    field.handleChange(onlyNumbers)
+                  }}
                   onBlur={field.handleBlur}
-                  min={8}
-                  maxLength={15}
-                  aria-invalid={!!(showErrors && field.state.meta.errors?.length > 0)}
-                  className={`${showErrors && field.state.meta.errors?.length > 0 ? inputError : inputBase} bg-white`}
+                  maxLength={8}
+                  aria-invalid={shouldShowFieldError(field)}
+                  className={`${shouldShowFieldError(field) ? inputError : inputBase} bg-white`}
                 />
-                {showErrors && field.state.meta.errors?.length > 0 && (
-                  <p className="text-sm text-[#9c1414] mt-1">{field.state.meta.errors[0]}</p>
+
+                {shouldShowFieldError(field) && (
+                  <p className="text-sm text-[#9c1414] mt-1">{fieldErrorMsg(field)}</p>
                 )}
-                <p className="mt-1 text-xs text-gray-500">Ejemplo: +506 2222-2222</p>
+
+                <p className="mt-1 text-xs text-gray-500">Ejemplo: 22222222</p>
               </>
             )}
           </form.Field>
@@ -400,15 +343,11 @@ const lastCheckedCjRef = useRef<string>("")
 
           <form.Field
             name="organizacion.email"
-            validators={{
-              onBlur: validateOrgField("email"),
-              onChange: validateOrgField("email"),
-              onSubmit: validateOrgField("email"),
-            }}
+            validators={commonValidators("email")}
           >
             {(field: any) => {
-              const zodErr = showErrors && field.state.meta.errors?.length > 0
-              const hasErr = !!emailDupError || !!zodErr
+              const zodErr = shouldShowFieldError(field)
+              const hasErr = !!emailDupError || zodErr
 
               return (
                 <>
@@ -422,6 +361,7 @@ const lastCheckedCjRef = useRef<string>("")
                     }}
                     onBlur={async (e) => {
                       field.handleBlur()
+
                       const email = e.target.value.trim()
                       if (!email) return
 
@@ -431,31 +371,49 @@ const lastCheckedCjRef = useRef<string>("")
                       setVerificandoEmail(true)
                       try {
                         const existe = await existsEmail(email)
-                        setEmailDupError(existe ? "Este email ya está registrado en el sistema" : "")
+                        setEmailDupError(
+                          existe ? "Este email ya está registrado en el sistema" : ""
+                        )
                       } finally {
                         setVerificandoEmail(false)
                       }
                     }}
                     aria-invalid={hasErr}
-                    className={`${hasErr ? inputError : inputBase} pr-10 bg-white`}
+                    className={`${hasErr ? inputError : inputBase} bg-white pr-10`}
                   />
 
                   {verificandoEmail && (
                     <div className="absolute right-3 top-[34px]">
                       <svg className="animate-spin h-5 w-5 text-gray-400" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <circle
+                          className="opacity-25"
+                          cx="12"
+                          cy="12"
+                          r="10"
+                          stroke="currentColor"
+                          strokeWidth="4"
+                          fill="none"
+                        />
                         <path
                           className="opacity-75"
                           fill="currentColor"
-                          d="M4 12a8 8 0 018-8V0C5.37 0 0 5.37 0 12h4z"
+                          d="M4 12h4a8 8 0 018-8V0C5.37 0 0 5.37 0 12h4z"
                         />
                       </svg>
                     </div>
                   )}
 
-                  {zodErr && <p className="text-sm text-[#9c1414] mt-1">{field.state.meta.errors[0]}</p>}
-                  {emailDupError && <p className="text-sm text-[#9c1414] mt-1">{emailDupError}</p>}
-                  <p className="mt-1 text-xs text-gray-500">Ejemplo: contacto@dominio.email</p>
+                  {!!emailDupError && (
+                    <p className="text-sm text-[#9c1414] mt-1">{emailDupError}</p>
+                  )}
+
+                  {!emailDupError && zodErr && (
+                    <p className="text-sm text-[#9c1414] mt-1">{fieldErrorMsg(field)}</p>
+                  )}
+
+                  <p className="mt-1 text-xs text-gray-500">
+                    Ejemplo: contacto@dominio.email
+                  </p>
                 </>
               )
             }}
@@ -464,4 +422,4 @@ const lastCheckedCjRef = useRef<string>("")
       </div>
     </div>
   )
-}  
+}

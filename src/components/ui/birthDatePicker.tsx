@@ -212,7 +212,7 @@ return (
               // Día: reducimos alto/ancho a la variable --cell y la fuente
               day: "h-[var(--cell)] w-[var(--cell)] p-0 text-[12px] font-normal aria-selected:opacity-100",
               day_button:
-                "h-full w-full rounded-md grid place-items-center outline-none focus-visible:ring-2 focus-visible:ring-[#708C3E]/30",
+                "h-full w-full rounded-md grid place-items-center outline-none transition-colors hover:bg-[#E6EDC8]/60 focus-visible:ring-2 focus-visible:ring-[#708C3E]/30",
               day_selected:
                 "bg-[#708C3E] text-white hover:bg-[#5d7334] hover:text-white focus:bg-[#708C3E] focus:text-white",
               day_today: "border border-[#A3853D]",

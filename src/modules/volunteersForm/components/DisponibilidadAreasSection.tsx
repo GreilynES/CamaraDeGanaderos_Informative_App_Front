@@ -9,7 +9,6 @@ import {
 } from "react"
 import { z } from "zod"
 import { volunteerOrganizacionSchema } from "../schemas/volunteerSchema"
-import type { DateRange } from "react-day-picker"
 import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Button } from "@/components/ui/button"
@@ -24,6 +23,16 @@ interface DisponibilidadAreasProps {
   handleInputChange?: (field: string, value: any) => void
   tipoSolicitante: "INDIVIDUAL" | "ORGANIZACION"
 }
+
+const AREAS_OPCIONES = [
+  "Eventos y actividades",
+  "Educación ambiental",
+  "Apoyo administrativo",
+  "Comunicación y redes sociales",
+  "Trabajo de campo/fincas",
+  "Capacitación y talleres",
+  "Mejora y mantenimiento de Infraestructura",
+]
 
 export type DisponibilidadAreasSectionHandle = {
   validateAndShowErrors: () => boolean
@@ -44,19 +53,11 @@ function startOfDay(d: Date) {
   return x
 }
 
-function parseISODateToLocal(iso: string) {
-  const [y, m, d] = iso.split("-").map(Number)
-  if (!y || !m || !d) return undefined
-  const dt = new Date(y, m - 1, d)
-  dt.setHours(0, 0, 0, 0)
-  return dt
-}
-
 export const DisponibilidadAreasSection = forwardRef<
   DisponibilidadAreasSectionHandle,
   DisponibilidadAreasProps
 >(function DisponibilidadAreasSection(
-  { form, handleInputChange, tipoSolicitante }: DisponibilidadAreasProps,
+  { form, formData, handleInputChange, tipoSolicitante }: DisponibilidadAreasProps,
   ref
 ) {
   const [fechaInicio, setFechaInicio] = useState("")
@@ -73,24 +74,7 @@ export const DisponibilidadAreasSection = forwardRef<
     { label: "Tarde (1:00 PM - 4:30 PM)", value: "tarde" },
     { label: "Flexible", value: "flexible" },
   ]
-  const areas = [
-    "Eventos y actividades",
-    "Educación ambiental",
-    "Apoyo administrativo",
-    "Comunicación y redes sociales",
-    "Trabajo de campo/fincas",
-    "Capacitación y talleres",
-    "Mejora y mantenimiento de Infraestructura",
-  ]
-
   const todayDate = useMemo(() => startOfDay(new Date()), [])
-
-  const [dateRange, _setDateRange] = useState<DateRange | undefined>(() => {
-    const from = fechaInicio ? parseISODateToLocal(fechaInicio) : undefined
-    const to = fechaFin ? parseISODateToLocal(fechaFin) : undefined
-    if (!from && !to) return undefined
-    return { from, to }
-  })
 
   const [errors, setErrors] = useState<{
     fechaInicio?: string
@@ -231,6 +215,8 @@ export const DisponibilidadAreasSection = forwardRef<
 
   const formRef = useRef(form)
   const handleRef = useRef(handleInputChange)
+  const hydratedKeyRef = useRef("")
+  const readyToSyncRef = useRef(false)
 
   useEffect(() => {
     formRef.current = form
@@ -240,14 +226,73 @@ export const DisponibilidadAreasSection = forwardRef<
   }, [handleInputChange])
 
   useEffect(() => {
-    const from = dateRange?.from ? startOfDay(dateRange.from) : undefined
-    const to = dateRange?.to ? startOfDay(dateRange.to) : undefined
-    setFechaInicio(from ? toISODate(from) : "")
-    setFechaFin(to ? toISODate(to) : "")
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dateRange?.from, dateRange?.to])
+    const orgValues = form?.state?.values?.organizacion
+    const srcDisponibilidad =
+      tipoSolicitante === "ORGANIZACION"
+        ? orgValues?.disponibilidades?.[0]
+        : formData?.disponibilidades?.[0]
+    const srcAreas =
+      tipoSolicitante === "ORGANIZACION"
+        ? orgValues?.areasInteres ?? []
+        : formData?.areasInteres ?? []
+    const srcRazonSocial =
+      tipoSolicitante === "ORGANIZACION"
+        ? String(orgValues?.razonesSociales?.[0]?.razonSocial ?? "").trim()
+        : ""
+
+    const hydrationKey = JSON.stringify({
+      tipoSolicitante,
+      disponibilidad: srcDisponibilidad ?? null,
+      areas: srcAreas,
+      razonSocial: srcRazonSocial,
+    })
+
+    if (hydratedKeyRef.current === hydrationKey) return
+    hydratedKeyRef.current = hydrationKey
+
+    if (srcDisponibilidad) {
+      setFechaInicio(String(srcDisponibilidad.fechaInicio ?? ""))
+      setFechaFin(String(srcDisponibilidad.fechaFin ?? ""))
+      setDiasSeleccionados(Array.isArray(srcDisponibilidad.dias) ? srcDisponibilidad.dias : [])
+      setHorariosSeleccionados(Array.isArray(srcDisponibilidad.horarios) ? srcDisponibilidad.horarios : [])
+    } else {
+      setFechaInicio("")
+      setFechaFin("")
+      setDiasSeleccionados([])
+      setHorariosSeleccionados([])
+    }
+
+    const areaNames = (Array.isArray(srcAreas) ? srcAreas : [])
+      .map((a: any) => String(a?.nombreArea ?? a ?? "").trim())
+      .filter(Boolean)
+
+    if (areaNames.length > 0) {
+      const baseAreas = new Set(AREAS_OPCIONES)
+      const known = areaNames.filter((a) => baseAreas.has(a))
+      const unknown = areaNames.find((a) => !baseAreas.has(a))
+      const next = unknown ? [...known, "Otro"] : known
+      setAreasSeleccionadas(next)
+      if (unknown) setOtraArea(unknown)
+    } else {
+      setAreasSeleccionadas([])
+      setOtraArea("")
+    }
+
+    if (tipoSolicitante === "ORGANIZACION") {
+      setRazonSocial(srcRazonSocial)
+    } else {
+      setRazonSocial("")
+    }
+
+    readyToSyncRef.current = false
+  }, [tipoSolicitante, formData, form])
 
   useEffect(() => {
+    if (!readyToSyncRef.current) {
+      readyToSyncRef.current = true
+      return
+    }
+
     const disponibilidad = buildDisponibilidadPayload()
     const areasPayload = buildAreasPayload()
 
@@ -539,7 +584,7 @@ export const DisponibilidadAreasSection = forwardRef<
         </div>
 
         <div className="p-6 space-y-3">
-          {areas.map((area) => {
+          {AREAS_OPCIONES.map((area) => {
             const checked = areasSeleccionadas.includes(area)
             return (
               <label key={area} className="flex items-center gap-2 rounded-md px-2 py-1.5 hover:bg-[#E6EDC8]/30">

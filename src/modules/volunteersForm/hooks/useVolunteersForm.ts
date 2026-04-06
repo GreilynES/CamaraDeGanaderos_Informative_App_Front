@@ -87,7 +87,7 @@ export function useVolunteersForm() {
         case 3:
           return motivacionValida && habilidadesValidas;
         case 4:
-          return !!files.cv && !!files.cedula && !!files.carta; // Documentos requeridos
+          return !!files.cv && !!files.cedula; // Carta opcional para individual
         default:
           return true;
       }

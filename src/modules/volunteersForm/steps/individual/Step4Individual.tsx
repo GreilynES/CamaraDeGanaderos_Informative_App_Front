@@ -16,12 +16,11 @@ export function Step4Individual(props: {
     () => ({
       cedula: !files?.cedula,
       cv: !files?.cv,
-      carta: !files?.carta,
     }),
     [files]
   )
 
-  const disableNext = missing.cedula || missing.cv || missing.carta
+  const disableNext = missing.cedula || missing.cv
 
   const handleNext = () => {
     setShowErrors(true)
@@ -47,7 +46,7 @@ export function Step4Individual(props: {
       {showErrors && disableNext && (
         <div className="px-6 pb-2">
           <p className="text-sm text-[#9c1414]">
-            Debes adjuntar cédula/pasaporte, CV y carta de recomendación para continuar.
+            Debes adjuntar cédula/pasaporte y CV para continuar.
           </p>
         </div>
       )}

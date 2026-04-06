@@ -3,7 +3,7 @@ import { UserRound, Mail } from "lucide-react"
 import { NavigationButtons } from "../../components/NavigationButtons"
 import { useRef, useState } from "react"
 import { volunteerOrganizacionSchema } from "../../schemas/volunteerSchema"
-import { existsEmail, validateSolicitudVoluntariado } from "../../services/volunteerFormService"
+import { validateSolicitudVoluntariado } from "../../services/volunteerFormService"
 import { Input } from "@/components/ui/input"
 import { BirthDatePicker } from "@/components/ui/birthDatePicker"
 import { useCedulaLookupController } from "@/shared/hooks/useCedulaLookupController" // <-- ponelo donde lo guardés
@@ -25,7 +25,6 @@ export function StepPersonalInformation({
 }: StepPersonalInformationProps) {
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [limitReached, setLimitReached] = useState<Record<string, boolean>>({})
-  const [verificandoEmail, setVerificandoEmail] = useState(false)
 
   const personaSchema = volunteerOrganizacionSchema.shape.organizacion.shape.representante.shape.persona
   const debounceEmailRef = useRef<number | null>(null)
@@ -57,20 +56,6 @@ export function StepPersonalInformation({
     }
     setErrors({})
     return true
-  }
-
-  const validarEmailUnico = async (email: string): Promise<string | undefined> => {
-    const v = (email || "").trim()
-    if (!v) return
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    if (!emailRegex.test(v)) return
-    try {
-      setVerificandoEmail(true)
-      const existe = await existsEmail(v)
-      if (existe) return "Este email ya está registrado en el sistema"
-    } finally {
-      setVerificandoEmail(false)
-    }
   }
 
   // ✅ RESET: cuando cambia la cédula, limpiamos datos de persona anterior
@@ -182,17 +167,6 @@ export function StepPersonalInformation({
 
     // si hay error en cédula, no avanzar
     if (idNumberError) return
-
-    // si NO viene de DB, validamos email único
-    if (!personaFromDB) {
-      if (!errors.email && formData.email?.trim()) {
-        const m = await validarEmailUnico(formData.email.trim())
-        if (m) {
-          setErrors((p) => ({ ...p, email: m }))
-          return
-        }
-      }
-    }
 
     onNextCombined()
   }
@@ -487,27 +461,10 @@ export function StepPersonalInformation({
                   if (debounceEmailRef.current) window.clearTimeout(debounceEmailRef.current)
                   debounceEmailRef.current = window.setTimeout(() => {}, 200)
                 }}
-                onBlur={async (e) => {
-                  if (bloquearCamposDB) return
-                  if (personaFromDB) return
-                  const em = e.target.value.trim()
-                  if (!em) return
-                  const msg = await validarEmailUnico(em)
-                  if (msg) setErrors((prev) => ({ ...prev, email: msg }))
-                }}
                 required
                 maxLength={60}
                 className={`${errors.email ? inputError : inputBase} pr-10 ${bloquearCamposDB ? disabledBase : "bg-white"}`}
               />
-
-              {verificandoEmail && !bloquearCamposDB && (
-                <div className="absolute right-3 top-[34px]">
-                  <svg className="animate-spin h-5 w-5 text-gray-400" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.37 0 0 5.37 0 12h4z" />
-                  </svg>
-                </div>
-              )}
 
               {errors.email && <p className="text-sm text-[#9c1414] mt-1">{errors.email}</p>}
               {limitReached["email"] && (

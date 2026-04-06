@@ -52,12 +52,8 @@ export function RepresentanteSection({
     onSubmit: validateCargo,
   }
 
-  const shouldShowFieldError = (field: any) => {
-  const hasError = Array.isArray(field.state.meta.errors) && field.state.meta.errors.length > 0;
-  const isTouched = field.state.meta.isTouched;
-
-  return hasError && (showErrors || isTouched);
-};
+  const shouldShowFieldError = (field: any) =>
+    showErrors && Array.isArray(field.state.meta.errors) && field.state.meta.errors.length > 0
 
   const fieldErrorMsg = (field: any) => {
     const e = field?.state?.meta?.errors?.[0]
@@ -193,6 +189,8 @@ export function RepresentanteSection({
                     onChange={(e) => {
                       const raw = e.target.value
                       field.handleChange(raw)
+                      field.handleBlur?.()
+                      cedulaCtrl.setError("")
 
                       // ✅ si la key cambia, reseteamos datos previos (persona anterior)
                       const digits = raw.replace(/\D/g, "")
@@ -222,21 +220,18 @@ export function RepresentanteSection({
                         <path
                           className="opacity-75"
                           fill="currentColor"
-                          d="M4 12h4a8 8 0 018-8V0C5.37 0 0 5.37 0 12h4z"
+                          d="M4 12a8 8 0 018-8V0C5.37 0 0 5.37 0 12h4z"
                         />
                       </svg>
                     </div>
                   )}
 
-                  {!!hookErr && <p className="text-sm text-[#9c1414] mt-1">{hookErr}</p>}
+                  {/* primero error de zod */}
+                  {shouldShowFieldError(field) && <p className="text-sm text-[#9c1414] mt-1">{field.state.meta.errors[0]}</p>}
 
-                  {!hookErr && !!repErrorMsg && <p className="text-sm text-[#9c1414] mt-1">{repErrorMsg}</p>}
-
-                  {!hookErr && !repErrorMsg && shouldShowFieldError(field) && (
-                    <p className="text-sm text-[#9c1414] mt-1">{fieldErrorMsg(field)}</p>
-                  )}
-
-                  <p className="mt-1 text-xs text-gray-500">Ejemplo: 504550789</p>
+                  {/* luego error del backend */}
+                  {repErrorMsg && <p className="text-sm text-[#9c1414] mt-1">{repErrorMsg}</p>}
+                  <p className="mt-1 text-xs text-gray-500">Ejemplo: 502120987-980</p>
                 </>
               )
             }}
@@ -262,6 +257,7 @@ export function RepresentanteSection({
                       if (bloquearNombreApellidos) return
                       setTocoNombres(true)
                       field.handleChange(e.target.value)
+                      field.handleBlur?.()
                     }}
                     onBlur={field.handleBlur}
                     className={`${
@@ -298,6 +294,7 @@ export function RepresentanteSection({
                       if (bloquearNombreApellidos) return
                       setTocoNombres(true)
                       field.handleChange(e.target.value)
+                      field.handleBlur?.()
                     }}
                     onBlur={field.handleBlur}
                     className={`${
@@ -334,6 +331,7 @@ export function RepresentanteSection({
                       if (bloquearNombreApellidos) return
                       setTocoNombres(true)
                       field.handleChange(e.target.value)
+                      field.handleBlur?.()
                     }}
                     onBlur={field.handleBlur}
                     className={`${
@@ -364,7 +362,10 @@ export function RepresentanteSection({
                   type="text"
                   value={field.state.value || ""}
                   maxLength={100}
-                  onChange={(e) => field.handleChange(e.target.value)}
+                  onChange={(e) => {
+                    field.handleChange(e.target.value)
+                    field.handleBlur?.()
+                  }}
                   onBlur={field.handleBlur}
                   className={`${shouldShowFieldError(field) ? inputError : inputBase} bg-white`}
                 />
@@ -389,11 +390,12 @@ export function RepresentanteSection({
                 <Input
                   type="tel"
                   value={field.state.value || ""}
-                  maxLength={8}
+                  maxLength={20}
                   disabled={bloquearCamposDB}
                   onChange={(e) => {
-                    const onlyNumbers = e.target.value.replace(/\D/g, "");
-                    field.handleChange(onlyNumbers);
+                    if (bloquearCamposDB) return
+                    field.handleChange(e.target.value)
+                    field.handleBlur?.()
                   }}
                   onBlur={field.handleBlur}
                   className={`${shouldShowFieldError(field) ? inputError : inputBase} ${
@@ -430,6 +432,7 @@ export function RepresentanteSection({
                   onChange={(e) => {
                     if (bloquearCamposDB) return
                     field.handleChange(e.target.value)
+                    field.handleBlur?.()
                   }}
                   onBlur={field.handleBlur}
                   className={`${shouldShowFieldError(field) ? inputError : inputBase} ${
@@ -466,9 +469,9 @@ export function RepresentanteSection({
                     onChange={(iso) => {
                       if (bloquearCamposDB) return
                       field.handleChange(iso)
+                      field.handleBlur?.()
                     }}
                     minAge={18}
-                    placeholder="Seleccione una fecha"
                     error={showErrors ? field.state.meta.errors?.[0] : undefined}
                     className=""
                   />
@@ -502,6 +505,7 @@ export function RepresentanteSection({
                     onChange={(e) => {
                       if (bloquearCamposDB) return
                       field.handleChange(e.target.value)
+                      field.handleBlur?.()
                     }}
                     onBlur={field.handleBlur}
                     rows={2}

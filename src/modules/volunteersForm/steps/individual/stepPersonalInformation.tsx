@@ -1,7 +1,7 @@
 import type { VolunteersFormData } from "../../../volunteersInformation/models/VolunteersType"
 import { UserRound, Mail } from "lucide-react"
 import { NavigationButtons } from "../../components/NavigationButtons"
-import { useRef, useState } from "react"
+import { useState } from "react"
 import { volunteerOrganizacionSchema } from "../../schemas/volunteerSchema"
 import { validateSolicitudVoluntariado } from "../../services/volunteerFormService"
 import { Input } from "@/components/ui/input"
@@ -27,7 +27,6 @@ export function StepPersonalInformation({
   const [limitReached, setLimitReached] = useState<Record<string, boolean>>({})
 
   const personaSchema = volunteerOrganizacionSchema.shape.organizacion.shape.representante.shape.persona
-  const debounceEmailRef = useRef<number | null>(null)
 
   const updateLimitFlag = (field: keyof VolunteersFormData, value: string, maxLen?: number) => {
     if (!maxLen) return
@@ -457,9 +456,6 @@ export function StepPersonalInformation({
                   updateLimitFlag("email", e.target.value, 60)
                   setErrors((prev) => ({ ...prev, email: "" }))
 
-                  // (opcional) debounce si querés no spamear el endpoint al escribir
-                  if (debounceEmailRef.current) window.clearTimeout(debounceEmailRef.current)
-                  debounceEmailRef.current = window.setTimeout(() => {}, 200)
                 }}
                 required
                 maxLength={60}

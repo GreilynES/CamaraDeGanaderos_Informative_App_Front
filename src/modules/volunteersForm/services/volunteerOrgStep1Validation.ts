@@ -39,7 +39,7 @@ export function validateOrgStep1Required(form: any) {
     "organizacion.representante.persona.fechaNacimiento",
   ]
 
-  namesToValidate.forEach((n) => form?.validateField?.(n, "submit"))
+  namesToValidate.forEach((n) => form?.validateField?.(n, "change"))
 
   return { anyEmpty }
 }

@@ -1,6 +1,6 @@
 import { useRef, useState } from "react"
 import { organizacionSchema } from "../schemas/volunteerSchema"
-import { existsEmail, validateSolicitudVoluntariado } from "../services/volunteerFormService"
+import { validateSolicitudVoluntariado } from "../services/volunteerFormService"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { CustomSelect } from "@/shared/ui/CustomSelect"
@@ -35,10 +35,7 @@ export function OrganizacionSection({ form, showErrors }: OrganizacionSectionPro
   )
   const [otroTipo, setOtroTipo] = useState("")
 
-  const [verificandoEmail, setVerificandoEmail] = useState(false)
-  const [emailDupError, setEmailDupError] = useState<string>("")
-
-  const [verificandoCJ, setVerificandoCJ] = useState(false)
+ const [verificandoCJ, setVerificandoCJ] = useState(false)
   const [cjError, setCjError] = useState<string>("")
 
   const inputBase =
@@ -422,7 +419,7 @@ const lastCheckedCjRef = useRef<string>("")
           >
             {(field: any) => {
               const zodErr = showErrors && field.state.meta.errors?.length > 0
-              const hasErr = !!emailDupError || !!zodErr
+              const hasErr = !!zodErr
 
               return (
                 <>
@@ -433,43 +430,13 @@ const lastCheckedCjRef = useRef<string>("")
                     onChange={(e) => {
                       field.handleChange(e.target.value)
                       field.handleBlur?.()
-                      if (emailDupError) setEmailDupError("")
-                    }}
-                    onBlur={async (e) => {
-                      field.handleBlur()
-                      const email = e.target.value.trim()
-                      if (!email) return
 
-                      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-                      if (!emailRegex.test(email)) return
-
-                      setVerificandoEmail(true)
-                      try {
-                        const existe = await existsEmail(email)
-                        setEmailDupError(existe ? "Este email ya está registrado en el sistema" : "")
-                      } finally {
-                        setVerificandoEmail(false)
-                      }
                     }}
+                    onBlur={field.handleBlur}
                     aria-invalid={hasErr}
                     className={`${hasErr ? inputError : inputBase} pr-10 bg-white`}
                   />
-
-                  {verificandoEmail && (
-                    <div className="absolute right-3 top-[34px]">
-                      <svg className="animate-spin h-5 w-5 text-gray-400" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                        <path
-                          className="opacity-75"
-                          fill="currentColor"
-                          d="M4 12a8 8 0 018-8V0C5.37 0 0 5.37 0 12h4z"
-                        />
-                      </svg>
-                    </div>
-                  )}
-
                   {zodErr && <p className="text-sm text-[#9c1414] mt-1">{field.state.meta.errors[0]}</p>}
-                  {emailDupError && <p className="text-sm text-[#9c1414] mt-1">{emailDupError}</p>}
                   <p className="mt-1 text-xs text-gray-500">Ejemplo: contacto@dominio.email</p>
                 </>
               )
